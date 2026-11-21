@@ -173,18 +173,37 @@
   font-weight: 600;
   font-size: 12px;
 }
-.cad-mode-badge {
+.cad-root .cad-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 9.5px;
   letter-spacing: 0.06em;
-  padding: 2px 5px;
-  border-radius: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid transparent;
   background: rgba(127, 175, 255, 0.12);
   color: var(--cad-muted);
   white-space: nowrap;
+  cursor: pointer;
+}
+.cad-root .cad-mode-badge:hover {
+  border-color: var(--cad-accent);
+  color: var(--cad-text);
+}
+.cad-root .cad-badge-caret {
+  width: 10px;
+  height: 10px;
+  opacity: 0.85;
+  flex-shrink: 0;
 }
 .cad-root[data-mode='read-only'] .cad-mode-badge {
   color: var(--text-warning, #efbc59);
   background: rgba(239, 188, 89, 0.14);
+}
+.cad-dropdown-menu button.cad-menu-active {
+  color: var(--cad-accent);
+  font-weight: 600;
 }
 .cad-readonly-banner {
   flex-shrink: 0;

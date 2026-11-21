@@ -620,16 +620,37 @@ try {
       (await page.evaluate(() => JSON.stringify(window.cad.drawing))) === before,
       'Viewer modified DXF',
     );
-    await page.getByRole('button', { name: 'Edit DXF directly', exact: true }).click();
+    await page
+      .locator('.cad-readonly-banner')
+      .getByRole('button', { name: 'Edit DXF directly', exact: true })
+      .click();
     assert(
       (await page.locator('.cad-mode-badge').innerText()) === 'CAD · EDITABLE',
       'Direct DXF edit did not enter editing mode',
     );
     await page.evaluate(() => window.cadReadOnly());
-    await page.getByRole('button', { name: 'Convert to .cad.md…', exact: true }).click();
+    await page
+      .locator('.cad-readonly-banner')
+      .getByRole('button', { name: 'Convert to .cad.md…', exact: true })
+      .click();
     assert(
       (await page.locator('.cad-mode-badge').innerText()) === 'CAD · EDITABLE',
       'Conversion did not enter editing mode',
+    );
+    await page.locator('.cad-mode-badge').click();
+    await page.getByRole('button', { name: 'Switch to Read Only', exact: true }).click();
+    assert(
+      (await page.locator('.cad-mode-badge').innerText()) === 'CAD · READ ONLY',
+      'Mode badge dropdown did not switch CAD to Read Only',
+    );
+    await page.locator('.cad-mode-badge').click();
+    await page
+      .locator('.cad-mode-menu')
+      .getByRole('button', { name: 'Edit CAD drawing', exact: true })
+      .click();
+    assert(
+      (await page.locator('.cad-mode-badge').innerText()) === 'CAD · EDITABLE',
+      'Mode badge dropdown did not return to CAD Editable',
     );
     assert(
       await page.getByRole('button', { name: 'Line (L)', exact: true }).isEnabled(),
@@ -863,7 +884,7 @@ try {
       );
       assert((await page.locator('.cad-zoom-hud button').count()) === 3, 'Canvas zoom HUD present');
       await page.getByRole('button', { name: 'Import & Export' }).click();
-      assert(await page.locator('.cad-dropdown-menu').isVisible(), 'Export dropdown opens');
+      assert(await page.locator('.cad-export-menu').isVisible(), 'Export dropdown opens');
       await page.getByRole('button', { name: 'Import & Export' }).click();
 
       // 2) Current color selector creates colored geometry
@@ -1648,7 +1669,7 @@ try {
       await page.setViewportSize({ width: 768, height: 1024 });
       await reset(true);
       await page.locator('.cad-toolbar .cad-menu-wrap button').click();
-      const dxfExportItem = page.locator('.cad-dropdown-menu button', { hasText: 'Export DXF' });
+      const dxfExportItem = page.locator('.cad-export-menu button', { hasText: 'Export DXF' });
       const box = await dxfExportItem.boundingBox();
       assert(box && box.width > 50 && box.height > 20, 'Export menu clipped on tablet viewport');
       await page.keyboard.press('Escape');
@@ -2159,7 +2180,7 @@ try {
       const boxCheck = await page.evaluate(() => {
         const rootEl = document.querySelector('.cad-root');
         const btn = document.querySelector('button[aria-label="Import & Export"]');
-        const menu = document.querySelector('.cad-dropdown-menu');
+        const menu = document.querySelector('.cad-export-menu');
         if (!rootEl || !btn || !menu) return { ok: false, reason: 'missing elements' };
         const r = rootEl.getBoundingClientRect();
         const b = btn.getBoundingClientRect();

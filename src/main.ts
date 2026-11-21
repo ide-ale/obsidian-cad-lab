@@ -519,6 +519,8 @@ export class CadView extends TextFileView {
   private source = '';
   private invalid = false;
   private dxfEditable = false;
+  private manualReadOnly = false;
+  private currentFrontmatter?: Record<string, unknown>;
   private dxfWarnings: string[] = [];
   constructor(
     leaf: WorkspaceLeaf,
@@ -528,7 +530,7 @@ export class CadView extends TextFileView {
     super(leaf);
   }
   get isEditableMode(): boolean {
-    return !this.readOnly || this.dxfEditable;
+    return this.readOnly ? this.dxfEditable : !this.manualReadOnly;
   }
   getViewType(): string {
     return this.readOnly ? DXF_VIEW : CAD_VIEW;
@@ -560,9 +562,11 @@ export class CadView extends TextFileView {
     frontmatter?: Record<string, unknown>,
     allowDirectDxf = false,
   ): EditorHost {
+    const isDxfFile = this.readOnly && this.file?.extension.toLowerCase() === 'dxf';
     return {
       documentName: this.file?.name,
       frontmatter,
+      dxfMode: this.readOnly,
       newDrawing: () => this.plugin.createDrawing(),
       save: () => this.save(),
       changed: () => {
@@ -575,10 +579,14 @@ export class CadView extends TextFileView {
       importLibrary: () => this.plugin.pickExternalLibrary(),
       saveLibrary: (d) => this.plugin.saveLibrary(d),
       editDxfInPlace:
-        allowDirectDxf && this.readOnly && !this.dxfEditable
+        allowDirectDxf && isDxfFile && !this.dxfEditable
           ? (d) => this.enableDirectDxfEdit(d)
           : undefined,
-      convert: (d) => this.plugin.convert(d, this.file, this.leaf),
+      setReadOnlyMode:
+        !this.readOnly || isDxfFile
+          ? (nextReadOnly, d) => this.setReadOnlyMode(nextReadOnly, d)
+          : undefined,
+      convert: this.readOnly ? (d) => this.plugin.convert(d, this.file, this.leaf) : undefined,
       insertPresetYaml: (d) => {
         if (this.readOnly) {
           new Notice('Markdown YAML properties require a .cad.md note. Use Convert to .cad.md.');
@@ -625,6 +633,7 @@ export class CadView extends TextFileView {
     frontmatter?: Record<string, unknown>,
     allowDirectDxf = false,
   ): void {
+    this.currentFrontmatter = frontmatter;
     this.editor?.dispose();
     this.contentEl.replaceChildren();
     this.editor = new CadEditor(
@@ -639,12 +648,35 @@ export class CadView extends TextFileView {
       note.setAttribute('role', 'status');
     }
   }
+  async setReadOnlyMode(nextReadOnly: boolean, drawing: Drawing): Promise<void> {
+    if (!nextReadOnly && this.readOnly) {
+      await this.enableDirectDxfEdit(drawing);
+      return;
+    }
+    if (nextReadOnly && this.isEditableMode) {
+      await this.save();
+    }
+    if (this.readOnly) {
+      this.dxfEditable = !nextReadOnly;
+    } else {
+      this.manualReadOnly = nextReadOnly;
+    }
+    const prepared = nextReadOnly
+      ? drawing
+      : supplementLibrary(drawing, this.plugin.allCatalogBlocks());
+    this.mountEditor(
+      prepared,
+      this.dxfWarnings,
+      this.currentFrontmatter,
+      this.readOnly && this.file?.extension.toLowerCase() === 'dxf',
+    );
+  }
   async enableDirectDxfEdit(drawing: Drawing): Promise<void> {
     if (!this.file || this.file.extension.toLowerCase() !== 'dxf') return;
     const activate = (): void => {
       this.dxfEditable = true;
       const prepared = supplementLibrary(drawing, this.plugin.allCatalogBlocks());
-      this.mountEditor(prepared, this.dxfWarnings, undefined, false);
+      this.mountEditor(prepared, this.dxfWarnings, undefined, true);
       new Notice(
         `Direct DXF editing enabled on ${this.file?.name}. Changes save in DXF R2010 format (single sheet, no Markdown BOM).`,
         6500,
@@ -710,6 +742,8 @@ export class CadView extends TextFileView {
     }
     if (clear) {
       this.dxfEditable = false;
+      this.manualReadOnly = false;
+      this.currentFrontmatter = undefined;
       this.dxfWarnings = [];
     }
     this.source = data;
@@ -823,6 +857,8 @@ export class CadView extends TextFileView {
     this.source = '';
     this.invalid = false;
     this.dxfEditable = false;
+    this.manualReadOnly = false;
+    this.currentFrontmatter = undefined;
     this.dxfWarnings = [];
   }
   async onClose(): Promise<void> {

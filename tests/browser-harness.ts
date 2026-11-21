@@ -9,30 +9,39 @@ const root = document.getElementById('app')!;
 const notices: string[] = [];
 const counters = { converted: 0, editedInPlace: 0, saved: 0, created: 0 };
 let editor: CadEditor;
-function mount(d: Drawing, readOnly = false): void {
+function mount(d: Drawing, readOnly = false, dxfMode = readOnly): void {
   editor?.dispose();
   editor = new CadEditor(
     root,
     d,
     {
-      documentName: readOnly ? 'Test.dxf' : 'Test.cad.md',
+      documentName: dxfMode ? 'Test.dxf' : 'Test.cad.md',
+      dxfMode,
       changed: () => {},
       notice: (m) => notices.push(m),
       newDrawing: async () => {
         counters.created++;
-        mount(emptyDrawing(builtinLibrary()));
+        mount(emptyDrawing(builtinLibrary()), false, false);
       },
       save: async () => {
         counters.saved++;
       },
-      editDxfInPlace: async (drawing) => {
-        counters.editedInPlace++;
-        mount(drawing);
+      editDxfInPlace:
+        dxfMode && readOnly
+          ? async (drawing) => {
+              counters.editedInPlace++;
+              mount(drawing, false, false);
+            }
+          : undefined,
+      setReadOnlyMode: (nextRo, drawing) => {
+        mount(drawing, nextRo, dxfMode);
       },
-      convert: async (drawing) => {
-        counters.converted++;
-        mount(drawing);
-      },
+      convert: dxfMode
+        ? async (drawing) => {
+            counters.converted++;
+            mount(drawing, false, false);
+          }
+        : undefined,
       exportDxf: async () => {},
       exportSvg: async () => {},
       importLibrary: async () => fixture(),
@@ -50,7 +59,7 @@ Object.assign(window, {
   cadFixture: fixture,
   cadEmpty: () => emptyDrawing(builtinLibrary()),
   cadReadOnly: () => mount(fixture(), true),
-  cadEditable: () => mount(fixture()),
+  cadEditable: () => mount(fixture(), false, false),
   cadArtifacts: () => ({
     dxf: new DxfExporter().export(fixture()),
     markdown: writeMarkdown(fixture(), '# P&ID example\n'),

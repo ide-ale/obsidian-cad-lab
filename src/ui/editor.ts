@@ -213,8 +213,10 @@ export interface EditorHost {
   exportPdf?(pdfBytes: Uint8Array, d: Drawing): Promise<void>;
   importLibrary(): Promise<Drawing | undefined>;
   saveLibrary(d: Drawing): Promise<void>;
+  dxfMode?: boolean;
   convert?(d: Drawing): Promise<void>;
   editDxfInPlace?(d: Drawing): Promise<void>;
+  setReadOnlyMode?(readOnly: boolean, d: Drawing): Promise<void> | void;
   settingsChanged?(settings: EditorSettings): void;
   insertPresetYaml?(d: Drawing): void;
   saveFrontmatter?(nextFrontmatter: Record<string, unknown>, d: Drawing): void;
@@ -540,13 +542,106 @@ export class CadEditor {
     this.toolbar = element(this.root, 'div', 'cad-toolbar');
     this.toolbar.setAttribute('role', 'toolbar');
     const docMeta = element(this.toolbar, 'div', 'cad-doc-pill');
+    const isDxfDoc =
+      host.dxfMode ?? (readOnly || Boolean(host.documentName?.toLowerCase().endsWith('.dxf')));
     element(
       docMeta,
       'strong',
       '',
-      host.documentName ?? (readOnly ? 'DXF drawing' : 'Untitled CAD drawing'),
+      host.documentName ?? (isDxfDoc ? 'DXF drawing' : 'Untitled CAD drawing'),
     );
-    element(docMeta, 'span', 'cad-mode-badge', readOnly ? 'DXF · READ ONLY' : 'CAD · EDITABLE');
+    const modeLabel = readOnly
+      ? isDxfDoc
+        ? 'DXF · READ ONLY'
+        : 'CAD · READ ONLY'
+      : isDxfDoc
+        ? 'DXF · EDITABLE'
+        : 'CAD · EDITABLE';
+    const hasModeActions = Boolean(host.editDxfInPlace || host.convert || host.setReadOnlyMode);
+    const modeMenu = element(
+      this.root,
+      'div',
+      'cad-dropdown-menu cad-mode-menu cad-floating-popover',
+    );
+    modeMenu.hidden = true;
+    const modeBadge = button(
+      docMeta,
+      modeLabel,
+      () => {
+        if (!hasModeActions) return;
+        const willOpen = modeMenu.hidden;
+        this.closeFloatingPopovers();
+        if (willOpen) {
+          modeMenu.hidden = false;
+          this.placeFloatingPopover(modeBadge, modeMenu);
+        }
+      },
+      hasModeActions ? 'Change editor mode (Edit / Convert / Read only)' : modeLabel,
+    );
+    modeBadge.className = 'cad-mode-badge';
+    if (hasModeActions) {
+      modeBadge.setAttribute('aria-haspopup', 'menu');
+      const ns = 'http://www.w3.org/2000/svg';
+      const docEl = this.root.ownerDocument;
+      const caret = docEl.createElementNS(ns, 'svg');
+      caret.setAttribute('viewBox', '0 0 12 12');
+      caret.setAttribute('class', 'cad-badge-caret');
+      caret.setAttribute('aria-hidden', 'true');
+      const path = docEl.createElementNS(ns, 'path');
+      path.setAttribute('d', 'M3 4.5 6 7.5 9 4.5');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', 'currentColor');
+      path.setAttribute('stroke-width', '1.6');
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('stroke-linejoin', 'round');
+      caret.append(path);
+      modeBadge.append(caret);
+
+      if (readOnly) {
+        if (host.editDxfInPlace) {
+          button(modeMenu, 'Edit DXF directly', () => {
+            modeMenu.hidden = true;
+            this.run(() => host.editDxfInPlace!(this.drawing));
+          });
+        } else if (host.setReadOnlyMode) {
+          button(modeMenu, 'Edit CAD drawing', () => {
+            modeMenu.hidden = true;
+            this.run(() => Promise.resolve(host.setReadOnlyMode!(false, this.drawing)));
+          });
+        }
+        if (host.convert) {
+          button(modeMenu, 'Convert to .cad.md…', () => {
+            modeMenu.hidden = true;
+            this.run(() => host.convert!(this.drawing));
+          });
+        }
+        const curRo = button(modeMenu, '✓ Read-only mode', () => {
+          modeMenu.hidden = true;
+        });
+        curRo.classList.add('cad-menu-active');
+      } else {
+        const curEdit = button(
+          modeMenu,
+          isDxfDoc ? '✓ Edit DXF directly' : '✓ Edit CAD drawing',
+          () => {
+            modeMenu.hidden = true;
+          },
+        );
+        curEdit.classList.add('cad-menu-active');
+        if (isDxfDoc && host.convert) {
+          button(modeMenu, 'Convert to .cad.md…', () => {
+            modeMenu.hidden = true;
+            this.run(() => host.convert!(this.drawing));
+          });
+        }
+        if (host.setReadOnlyMode) {
+          button(modeMenu, 'Switch to Read Only', () => {
+            modeMenu.hidden = true;
+            this.run(() => Promise.resolve(host.setReadOnlyMode!(true, this.drawing)));
+          });
+        }
+      }
+    }
 
     if (readOnly) {
       const banner = element(this.root, 'div', 'cad-readonly-banner');
@@ -554,20 +649,30 @@ export class CadEditor {
         banner,
         'span',
         '',
-        'This DXF is read-only. Edit the DXF directly in place or convert it to a .cad.md note (adds BOM, YAML & multi-page).',
+        isDxfDoc
+          ? 'This DXF is read-only. Edit the DXF directly in place or convert it to a .cad.md note (adds BOM, YAML & multi-page).'
+          : 'This CAD note is in read-only mode. Switch back to editing to modify geometry.',
       );
       const actions = element(banner, 'div', 'cad-readonly-actions');
-      if (host.editDxfInPlace)
+      if (isDxfDoc && host.editDxfInPlace)
         button(actions, 'Edit DXF directly', () =>
           this.run(() => host.editDxfInPlace!(this.drawing)),
         );
-      if (host.convert)
+      else if (!isDxfDoc && host.setReadOnlyMode)
+        button(actions, 'Edit CAD drawing', () =>
+          this.run(() => Promise.resolve(host.setReadOnlyMode!(false, this.drawing))),
+        );
+      if (isDxfDoc && host.convert)
         button(actions, 'Convert to .cad.md…', () => this.run(() => host.convert!(this.drawing)));
     }
 
     // Grouped Import / Export dropdown menu (mounted via fixed positioning so scrollable toolbars never clip it)
     const exportWrap = element(this.toolbar, 'div', 'cad-menu-wrap');
-    const exportMenu = element(this.root, 'div', 'cad-dropdown-menu cad-floating-popover');
+    const exportMenu = element(
+      this.root,
+      'div',
+      'cad-dropdown-menu cad-export-menu cad-floating-popover',
+    );
     exportMenu.hidden = true;
     const exportBtn = button(
       exportWrap,
@@ -624,8 +729,9 @@ export class CadEditor {
       });
     }
     this.listen(this.root, 'pointerdown', (ev) => {
-      if (!exportWrap.contains(ev.target as Node) && !exportMenu.contains(ev.target as Node))
-        exportMenu.hidden = true;
+      const target = ev.target as Node;
+      if (!exportWrap.contains(target) && !exportMenu.contains(target)) exportMenu.hidden = true;
+      if (!modeBadge.contains(target) && !modeMenu.contains(target)) modeMenu.hidden = true;
     });
 
     if (!readOnly) {
