@@ -4,6 +4,14 @@ CAD-Lab **1.0.0** is a portable vector CAD plugin for Obsidian dedicated to P&ID
 
 The plugin runtime uses only Obsidian and standard Web APIs—zero Node built-ins or Electron dependencies—so the identical bundle runs on both desktop and mobile (iPadOS / Apple Pencil).
 
+## Preview
+
+![CAD-Lab Workspace](docs/cad-lab-workspace.jpg)
+
+![CAD-Lab DXF Editing Demo 1](docs/cad-lab-dxf-edit-demo-1.gif)
+
+![CAD-Lab DXF Editing Demo 2](docs/cad-lab-dxf-edit-demo-2.gif)
+
 ## Install and update
 
 Copy `main.js`, `manifest.json`, and `styles.css` to `.obsidian/plugins/cad-lab/` in your vault, then enable **CAD-Lab** in Community plugins.
