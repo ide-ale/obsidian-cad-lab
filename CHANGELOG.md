@@ -2,7 +2,7 @@
 
 ## 1.0.0 — 21 November 2026
 
-- **International Standards Hierarchy**: Expanded built-in vector symbol libraries to 182 symbols organized by discipline and standard sub-trees: **P&ID** (`ANSI/ISA-5.1`, `ISO 10628`, `ISO 14617`), **Electrical multi-line & single-line** (`IEC 60617`, `ANSI Y32`, `NFPA 79`), and **General** (`ISO 128`).
+- **International Standards Hierarchy**: Expanded built-in vector symbol libraries to 231 symbols organized by discipline and standard sub-trees: **P&ID** (`ANSI/ISA-5.1`, `ISO 10628`, `ISO 14617`), **Electrical multi-line & single-line** (`IEC 60617`, `ANSI Y32`, `NFPA 79`), and **General** (`ISO 128`).
 - **Centralized Library Manager**: Added an interactive Library Manager modal and API (`src/core/library-manager.ts`) to create custom symbol sets from canvas selections or templates, attach custom metadata/attributes, sort/filter by standard, import external DXF/JSON libraries, and safely delete unused symbols.
 - **Critical Grid Snap Fix & Shapr3D/PolyCAD UI Polish**: Unified the visual reference grid and logical snap grid around `gridStep` in millimeters so toggling **Grid snap** never produces a duplicate or shifted grid. Added in-memory SVG symbol preview caching (`O(1)`) and tappable dimension badges for the on-screen precision numpad.
 - **Millimeter Dimensions, Dynamic Scale & Title Blocks**: Added the `DIM` (`Dimension`) tool (`aligned`, `horizontal`, `vertical`, `diameter`, `radius`), dynamic drawing scale (`1:1` to `1:100`, `2:1`, `5:1`) with automatic element rescaling, and ISO/ANSI borders with editable **Title Blocks (Cartigli)**.

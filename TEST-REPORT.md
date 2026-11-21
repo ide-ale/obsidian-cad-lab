@@ -12,7 +12,7 @@ Date: **21 November 2026**. Release artifacts build directly into `main.js`, `ma
 
 ## Verified Capabilities in 1.0.0
 
-1. **International Standards Sub-trees**: Verified presence and hierarchical filtering of **ANSI/ISA-5.1**, **ISO 10628**, **ISO 14617** under `P&ID` and **IEC 60617**, **ANSI Y32**, **NFPA 79** under `Electrical multi-line` and `Electrical single-line` (182 total vector symbols).
+1. **International Standards Sub-trees**: Verified presence and hierarchical filtering of **ANSI/ISA-5.1**, **ISO 10628**, **ISO 14617** under `P&ID` and **IEC 60617**, **ANSI Y32**, **NFPA 79** under `Electrical multi-line` and `Electrical single-line` (231 total vector symbols).
 2. **Centralized Library Manager**: Verified creation of custom discipline symbols with custom metadata attributes (`RATING`, `MATERIAL`, `NOTES`), port generation, and safe deletion that protects placed instances.
 3. **Unified Grid & Snap to Grid Fix**: Verified in both unit and Playwright browser tests that `Camera.visualGridStep(renderer.gridStep)` remains locked to the configured millimeter step (`5 mm`) whether `Grid snap` is enabled or disabled, eliminating any secondary or shifted visual grid.
 4. **Millimeter Dimensions, Dynamic Scale & ISO/ANSI Title Blocks**: Verified `DimensionEntity` (`DIM`) creation, SVG/PDF rendering, DXF round-trip, proportional element rescaling across drawing scales, and ISO 7200 Title Block generation.
