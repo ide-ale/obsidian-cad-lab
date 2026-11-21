@@ -1,0 +1,11 @@
+node_modules/
+.npm-cache/
+.playwright-browsers/
+.pip-cache/
+.test-venv/
+.browser-tmp/
+main.js*
+tests/run.mjs*
+tests/artifacts.mjs*
+tests/browser-harness.js*
+examples/

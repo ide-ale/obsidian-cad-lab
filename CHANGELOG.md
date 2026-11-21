@@ -1,0 +1,41 @@
+# Changelog
+
+## 0.4.0 — 16 November 2026
+
+- **International Standards Hierarchy**: Expanded built-in vector symbol libraries to 182 symbols organized by discipline and standard sub-trees: **P&ID** (`ANSI/ISA-5.1`, `ISO 10628`, `ISO 14617`), **Electrical multi-line & single-line** (`IEC 60617`, `ANSI Y32`, `NFPA 79`), and **General** (`ISO 128`).
+- **Centralized Library Manager**: Added an interactive Library Manager modal and API (`src/core/library-manager.ts`) to create custom symbol sets from canvas selections or templates, attach custom metadata/attributes, sort/filter by standard, import external DXF/JSON libraries, and safely delete unused symbols.
+- **Critical Grid Snap Fix & Shapr3D/PolyCAD UI Polish**: Unified the visual reference grid and logical snap grid around `gridStep` in millimeters so toggling **Grid snap** never produces a duplicate or shifted grid. Added in-memory SVG symbol preview caching (`O(1)`) and tappable dimension badges for the on-screen precision numpad.
+- **Millimeter Dimensions, Dynamic Scale & Title Blocks**: Added the `DIM` (`Dimension`) tool (`aligned`, `horizontal`, `vertical`, `diameter`, `radius`), dynamic drawing scale (`1:1` to `1:100`, `2:1`, `5:1`) with automatic element rescaling, and ISO/ANSI borders with editable **Title Blocks (Cartigli)**.
+- **True-Scale Vector PDF & DXF/DWG Enhancements**: Added a zero-dependency native **Vector PDF 1.4** exporter (`src/io/pdf.ts`), DXF `DIMENSION` entity round-tripping, and binary DWG version header diagnostics.
+- **Unidirectional Markdown Bill of Materials (BOM)**: Automatically generates and updates a Markdown BOM summary table inside `.cad.md` notes strictly from the graphical schematic (`Graphic → Table`).
+- **CAD Precision, Label Control & Theme/UI Refinements**:
+  - Added independent `labelStyle` controls (`Default`, `Center`, 4 corners, 4 sides placement; independent default `3 mm` text height; `Horizontal (0°)` / `Vertical (90°)` / `Follow block rotation`; mirror-safe readable rendering).
+  - Enforced grid-aligned `Tracking` in `SnapIndex` when `Grid snap` is enabled so `Polyline` and `Line` vertices never pull off-grid.
+  - Upgraded `Obsidian Adaptive` theme to compute host palette and harmonious grid lines dynamically and listen to Obsidian `css-change` events.
+  - Streamlined the top toolbar by removing redundant `New`/`Save`/top-`Undo`/`Redo` buttons, moving Zoom controls onto a floating canvas HUD, adding crisp SVG Undo/Redo icons, exposing ACI color swatch pickers (`Current color`, `Selection color`, and Layer ACI selectors), and adding **Virtual HUD** (live YAML frontmatter) vs **Real / Print Standard** (`ISO 7200`, `ANSI Y14.1`, `Minimal`) Title Block modes.
+- **Tablet / iPad Ergonomics, General Settings, Line Jumps & DWG Inspection**:
+  - Added a **General Settings (`⚙`)** modal (`ProjectSettings` + editor preferences) grouping project text/label defaults, Visio-style cross-over humps, grid step, polar angle, and Apple Pencil hold-delay loupe settings (`penLoupeDelayMs`, default `1200 ms`).
+  - Added **Flow Cross-Over Humps (Visio style)** (`computeLineJumps`) rendered consistently across Canvas, SVG, and Vector PDF.
+  - Added multi-finger iPad touch quick-taps (**2-finger tap = Undo**, **3-finger tap = Redo**) alongside pinch-zoom & pan, reliable 1-finger touch pan & 2-finger pinch-zoom navigation on iPadOS WebKit (non-passive `touch`/`gesture` capture guards, ghost-pointer reconciliation on `touchend`/`touchcancel`, relaxed finger contact threshold when `penOnly` is active, smooth 2→1 finger transitions, Pencil hover isolation, displacement-based tap detection at 120Hz, and independent desktop/mobile tablet persistence over iCloud Sync), compact canvas-first tablet chrome (`44px` icon rail, single-line toolbars), and high-contrast `<input>`/`<select>`/`<option>` readability.
+  - Added lossless binary `.dwg` inspection (`src/io/dwg.ts`) extracting release metadata, section counts, and embedded drawing thumbnails, plus updated authorship credits (`Alessandro Abrami`, `github.com/ide-ale`).
+  - Renamed plugin to **CAD-Lab** (`cad-lab`) with multi-vault deployment (target Obsidian vaults) and shared custom `CAD Libraries/*.cad-library.json` synchronization.
+  - Added user-chosen export destinations (`showSaveFilePicker` / iPadOS Files & customizable Vault path), strict AutoCAD R2010 (`AC1024`) DXF table & dictionary compliance (`ANSI_1252`, `VPORT *Active`, `APPID ACAD`, `DIMSTYLE Standard` handle `105`, `BLOCK_RECORD` `340` layout links, `ACAD_GROUP`, `ACAD_LAYOUT`, `ACAD_PLOTSTYLENAME`, `ACAD_MLINESTYLE`), direct mouse grab/drag **Move**, pointer-placed **Copy** with automatic BOM `TAG` incrementing (`XV4 → XV5`), **Group / Ungroup** (including decomposing library symbols into editable shapes), screen-space rotated internal symbol text (`M`, `PI`, etc. at any zoom/angle on WebKit & Desktop), and a **Visual Linetype Preview Picker** with customizable dash/dot & gap spacing (`mm`).
+  - Added AutoCAD parity & multi-page schematic upgrades: **Post-Draw Measurement Tab** (`postDrawMeasureTab`) to edit length/angle/radius immediately after drawing lines/shapes, **Match Properties (`MA` / `MATCHPROP`)** to copy layer, color & linetype across objects, **Scale (`SC` / `SCALE`)** command & interactive tool, explicit **Inside / Outside / Both-sides Offset (`O`)** with live preview, **Configurable Keyboard Shortcuts (`F3` OSNAP, `F8` ORTHO, `F9` SNAP, custom bindings), Custom Command Aliases & Mouse Wheel/Button Settings** (in both Plugin Settings and General Settings), **Print / Fit-to-Standard-Sheet Rescaling (`PRINT`/`PLOT`)**, **Multi-Page Schematic Management** (`cad-page-bar`, Pages modal, and multi-page Vector PDF export), and **Find Objects (`FIND` / `Ctrl+F`)** highlighting every match's **Layer badge, ACI dot & visibility/lock state**.
+  - Added blank **ISA-5.1 / BS 1646 / DIN 28004** P&ID instrument bubbles & **IEC 62271-1 / IEC/EN 62271-200** switchgear symbols, **Bridge (`J`)** per-intersection toggle & `Jumps` drafting button, **Dash Density presets** + **Line Arrows** (`closed`, `open`, `stealth`, `triangle`, `dot`, `slash` at `Start`/`End`/`Both`/`Middle`/`Every L/N` + Reverse), **1 mm default grid** with clickable status-bar grid size editor, single-row compact Desktop toolbar, high-contrast non-white focused inputs, fixed-positioned popovers unclipped on Tablet Export, clean minimal `cad-lab: true` YAML frontmatter (opt-in preset properties), and **`Open in CAD-Lab Editor`** inside Markdown `···` More Options menu.
+- **Community Plugin Compliance**: Added `versions.json`, `CadSettingTab`, and 100% English source code and documentation.
+
+## 0.3.0 — 15 November 2026
+
+- Rebuilt the workspace around conventional Navigate / Draw / Modify ribbon groups, right-side panels, bottom command prompt, visible layer/linetype controls and New/Save/Undo/Redo actions.
+- Made English the default software language: controls, prompts, command names, errors, symbol labels and new VALUE/DESCRIPTION attributes. Existing user text and attributes are preserved.
+- Added a permanent editable/read-only mode indicator and DXF warning banner. Open editable drawing reuses a valid companion CAD file or creates a separate editable copy.
+- Added long command names, connected LINE sequences, Close, Enter/Space finish, idle repeat, Escape cancel, polyline vertex undo and save shortcut.
+- Added regression checks for DXF-to-editor handoff, canvas hit testing and the revised command workflow.
+
+## 0.2.0 — 15 November 2026
+
+Full screen, free drawing, tool icons, 140 categorized symbols, ten line styles, fixed-mm grid snapping and revised pen/touch interaction.
+
+## 0.1.0 — 14 November 2026
+
+Initial millimeter-based CAD prototype with primitives, blocks, ports, intelligent connectors, layers, history, Markdown CAD notes, DXF viewing/import/export, SVG and desktop/tablet layouts.

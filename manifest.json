@@ -1,0 +1,10 @@
+{
+  "id": "cad-lab",
+  "name": "CAD-Lab",
+  "version": "0.4.0",
+  "minAppVersion": "1.5.0",
+  "description": "Vector CAD in millimeters for P&ID and electrical schematics with international standards, BOM, DXF, and vector PDF.",
+  "author": "Alessandro Abrami (ide-ale)",
+  "authorUrl": "https://github.com/ide-ale",
+  "isDesktopOnly": false
+}
