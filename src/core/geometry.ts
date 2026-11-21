@@ -1,7 +1,6 @@
 import {
   Arc,
   Attachment,
-  Circle,
   DimensionEntity,
   Drawing,
   Entity,

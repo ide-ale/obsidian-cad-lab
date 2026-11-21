@@ -1,11 +1,9 @@
 import { LINE_TYPES, importedLineType } from '../core/linetypes';
 import {
-  Arc,
   Block,
   Drawing,
   Entity,
   Insert,
-  Layer,
   LineType,
   Point,
   clone,

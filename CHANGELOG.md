@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1 — 21 November 2026
+
+- **Obsidian Community Review Compliance**:
+  - Replaced `navigator.userAgent` tablet detection with Obsidian's native `Platform` API (`src/main.ts`).
+  - Switched `.dxf` trash cleanup during `.cad.md` conversion to `app.vault.trash(file, false)` for full Obsidian `1.5.0+` compatibility.
+  - Replaced static inline `.style.*` assignments with CSS classes and CSS custom properties across `src/main.ts`, `src/ui/editor.ts`, and `styles.css`.
+  - Cleaned up TypeScript warnings/unused imports, `!important` / `scrollbar-width` CSS lint items, and added automatic release notes plus GitHub build provenance attestations (`actions/attest-build-provenance@v2`).
+
 ## 1.0.0 — 21 November 2026
 
 - **International Standards Hierarchy**: Expanded built-in vector symbol libraries to 231 symbols organized by discipline and standard sub-trees: **P&ID** (`ANSI/ISA-5.1`, `ISO 10628`, `ISO 14617`), **Electrical multi-line & single-line** (`IEC 60617`, `ANSI Y32`, `NFPA 79`), and **General** (`ISO 128`).

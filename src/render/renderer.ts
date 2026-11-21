@@ -8,7 +8,6 @@ import {
   LineJump,
   add,
   arrowMarkerShape,
-  boundsOf,
   computeLineArrowMarkers,
   computeLineJumps,
   drawingBounds,
@@ -78,7 +77,7 @@ export function palette(theme: Theme, element: HTMLElement): Palette {
   if (theme !== 'adaptive') return palettes[theme];
   const doc = element.ownerDocument;
   const win = doc.defaultView!;
-  const hostEl = (element.closest('.cad-root') as HTMLElement | null) ?? element;
+  const hostEl = element.closest<HTMLElement>('.cad-root') ?? element;
   const hostCss = win.getComputedStyle(hostEl);
   const bodyCss = doc.body ? win.getComputedStyle(doc.body) : hostCss;
 

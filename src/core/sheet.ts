@@ -381,7 +381,8 @@ export function stampSheetToEntities(d: Drawing): number {
     d.layers.push(layer);
   }
   // Remove previous stamped sheet entities on TITLE_BLOCK layer
-  d.entities = d.entities.filter((e) => e.layer !== layer!.id);
+  const layerId = layer.id;
+  d.entities = d.entities.filter((e) => e.layer !== layerId);
   const generated = buildSheetEntities({ ...d.sheet, enabled: true }, layer.id).map((e) => ({
     ...e,
     id: uid(),

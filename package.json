@@ -1,6 +1,6 @@
 {
   "name": "cad-lab",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Portable vector CAD for Obsidian, P&ID and electrical schematics",
   "author": "Alessandro Abrami",

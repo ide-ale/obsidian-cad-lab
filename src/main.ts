@@ -60,11 +60,13 @@ interface Settings extends Omit<EditorSettings, 'tablet'> {
   libraryFolder: string;
 }
 function isTouchTabletDevice(): boolean {
-  if (Platform.isMobile || Platform.isTablet) return true;
-  if (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 1) {
-    return /iPad|Macintosh|Android|Tablet/i.test(navigator.userAgent);
-  }
-  return false;
+  return (
+    Platform.isMobile ||
+    Platform.isTablet ||
+    Platform.isMobileApp ||
+    Platform.isIosApp ||
+    Platform.isAndroidApp
+  );
 }
 class FilePicker extends FuzzySuggestModal<TFile> {
   private selected?: TFile;
@@ -1355,53 +1357,60 @@ export default class CadPlugin extends Plugin {
           }
           return finalPath;
         };
-        const deviceBtn = button(actions, 'Save to Device / Files…', async () => {
-          const blob = new Blob([arrayBuf], { type: mimeType });
-          const nav = navigator as Navigator & {
-            canShare?: (d: { files: File[] }) => boolean;
-            share?: (d: { files: File[]; title?: string }) => Promise<void>;
-          };
-          const shareCandidates = [mimeType, 'text/plain', 'application/octet-stream'];
-          for (const tryMime of shareCandidates) {
-            const fileObj = new File([blob], suggestedName, { type: tryMime });
-            if (nav.share && (!nav.canShare || nav.canShare({ files: [fileObj] }))) {
-              try {
-                await nav.share({ files: [fileObj], title: suggestedName });
-                this.close();
-                return;
-              } catch (e) {
-                if (e instanceof DOMException && e.name === 'AbortError') return;
+        const deviceBtn = button(actions, 'Save to Device / Files…', () => {
+          void (async () => {
+            const blob = new Blob([arrayBuf], { type: mimeType });
+            const nav = navigator as Navigator & {
+              canShare?: (d: { files: File[] }) => boolean;
+              share?: (d: { files: File[]; title?: string }) => Promise<void>;
+            };
+            const shareCandidates = [mimeType, 'text/plain', 'application/octet-stream'];
+            for (const tryMime of shareCandidates) {
+              const fileObj = new File([blob], suggestedName, { type: tryMime });
+              if (nav.share && (!nav.canShare || nav.canShare({ files: [fileObj] }))) {
+                try {
+                  await nav.share({ files: [fileObj], title: suggestedName });
+                  this.close();
+                  return;
+                } catch (e) {
+                  if (e instanceof DOMException && e.name === 'AbortError') return;
+                }
               }
             }
-          }
-          if (Platform.isMobile) {
-            const savedPath = await saveVaultCopy(pathInput.value || defaultPath);
-            new Notice(`${label} saved to vault (${savedPath}) — share via Files app.`, 6000);
+            if (Platform.isMobile) {
+              const savedPath = await saveVaultCopy(pathInput.value || defaultPath);
+              new Notice(`${label} saved to vault (${savedPath}) — share via Files app.`, 6000);
+              this.close();
+              return;
+            }
+            const url = URL.createObjectURL(blob);
+            const a = document.body.createEl('a', {
+              attr: { href: url, download: suggestedName },
+            });
+            a.click();
+            a.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 4000);
+            new Notice(`${label} downloaded: ${suggestedName}`);
             this.close();
-            return;
-          }
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = suggestedName;
-          a.click();
-          window.setTimeout(() => URL.revokeObjectURL(url), 4000);
-          new Notice(`${label} downloaded: ${suggestedName}`);
-          this.close();
+          })();
         });
         deviceBtn.setAttribute('aria-label', 'Save to Device or Files');
 
         if (typeof payload === 'string') {
-          button(actions, `Copy ${label} Text`, async () => {
-            await navigator.clipboard.writeText(payload);
-            new Notice(`${label} copied to clipboard.`);
+          button(actions, `Copy ${label} Text`, () => {
+            void (async () => {
+              await navigator.clipboard.writeText(payload);
+              new Notice(`${label} copied to clipboard.`);
+            })();
           });
         }
 
-        button(actions, 'Save to Vault Path', async () => {
-          const finalPath = await saveVaultCopy(pathInput.value || defaultPath);
-          new Notice(`${label} saved to vault: ${finalPath}`);
-          this.close();
+        button(actions, 'Save to Vault Path', () => {
+          void (async () => {
+            const finalPath = await saveVaultCopy(pathInput.value || defaultPath);
+            new Notice(`${label} saved to vault: ${finalPath}`);
+            this.close();
+          })();
         });
       }
     })(this.app);
@@ -1512,7 +1521,7 @@ export default class CadPlugin extends Plugin {
       (choice === 'open-existing' || choice === 'open-existing-trash') &&
       existing instanceof TFile
     ) {
-      if (choice === 'open-existing-trash' && file) await this.app.fileManager.trashFile(file);
+      if (choice === 'open-existing-trash' && file) await this.app.vault.trash(file, false);
       await this.openCad(existing, targetLeaf);
       return;
     }
@@ -1526,15 +1535,14 @@ export default class CadPlugin extends Plugin {
       const path = existing instanceof TFile ? await this.uniquePath(counterpart) : counterpart;
       targetFile = await this.app.vault.create(path, mdContent);
     }
-    if (choice === 'trash-dxf' && file) await this.app.fileManager.trashFile(file);
+    if (choice === 'trash-dxf' && file) await this.app.vault.trash(file, false);
     await this.openCad(targetFile, targetLeaf);
   }
   async pickExternalLibrary(): Promise<Drawing | undefined> {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.dxf,.dwg,.json';
-    input.style.display = 'none';
-    document.body.append(input);
+    const input = document.body.createEl('input', {
+      cls: 'cad-hidden-file-input',
+      attr: { type: 'file', accept: '.dxf,.dwg,.json' },
+    });
     return new Promise((resolve) => {
       let done = false;
       const finish = (d?: Drawing): void => {

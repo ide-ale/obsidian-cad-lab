@@ -1,5 +1,5 @@
-import { Block, Drawing, Entity, Point, Port, clone, uid } from './model';
-import { boundsOf, flatten, flatPoints, sub, transformEntity, identity } from './geometry';
+import { Block, Drawing, Entity, Port, clone } from './model';
+import { boundsOf, flatten, flatPoints, transformEntity, identity } from './geometry';
 
 export type LibrarySortOrder = 'name' | 'standard' | 'tag' | 'group';
 

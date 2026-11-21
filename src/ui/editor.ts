@@ -12,7 +12,6 @@ import {
   PIPING_LINE_PRESETS,
   SINGLE_LINE_PRESETS,
   customDashPattern,
-  dashPattern,
   lineTypeChoices,
 } from '../core/linetypes';
 import { constrainedPoint, gridPoint, polarTrackPoint } from '../core/precision';
@@ -72,7 +71,6 @@ import {
   TitleBlockData,
   TitleBlockMode,
   TitleBlockStandard,
-  Wire,
   clone,
   defaultProjectSettings,
   isEditable,
@@ -99,7 +97,6 @@ import {
   drawingBounds,
   entityBounds,
   entityGrips,
-  explodeEntity,
   filletLines,
   findAllLineCrossings,
   groupEntities,
@@ -118,7 +115,6 @@ import {
   setLineCrossingJump,
   selectBox,
   sub,
-  toggleLineCrossingJump,
   transformEntity,
   ungroupEntity,
 } from '../core/geometry';
@@ -214,9 +210,9 @@ export interface EditorHost {
   importLibrary(): Promise<Drawing | undefined>;
   saveLibrary(d: Drawing): Promise<void>;
   dxfMode?: boolean;
-  convert?(d: Drawing): Promise<void>;
-  editDxfInPlace?(d: Drawing): Promise<void>;
-  setReadOnlyMode?(readOnly: boolean, d: Drawing): Promise<void> | void;
+  convert?: (this: void, d: Drawing) => Promise<void>;
+  editDxfInPlace?: (this: void, d: Drawing) => Promise<void>;
+  setReadOnlyMode?: (this: void, readOnly: boolean, d: Drawing) => Promise<void> | void;
   settingsChanged?(settings: EditorSettings): void;
   insertPresetYaml?(d: Drawing): void;
   saveFrontmatter?(nextFrontmatter: Record<string, unknown>, d: Drawing): void;
@@ -1099,9 +1095,9 @@ export class CadEditor {
         Math.min(bodyRect.height - 44, dragFloat.origY + (ev.clientY - dragFloat.startY)),
       );
       this.panelFloatingPos = { x: nx, y: ny };
-      this.sideContainerEl.style.left = `${nx}px`;
-      this.sideContainerEl.style.top = `${ny}px`;
-      this.sideContainerEl.style.right = 'auto';
+      this.sideContainerEl.classList.add('cad-floating-custom');
+      this.sideContainerEl.style.setProperty('--cad-float-x', `${nx}px`);
+      this.sideContainerEl.style.setProperty('--cad-float-y', `${ny}px`);
     });
     dockBar.addEventListener('pointerup', () => {
       if (!dragFloat) return;
@@ -1554,13 +1550,11 @@ export class CadEditor {
       setToolIcon(this.floatingCollapseBtn, isCollapsed ? 'EXPAND' : 'COLLAPSE');
     }
     if (isFloat && this.panelFloatingPos) {
-      this.sideContainerEl.style.left = `${this.panelFloatingPos.x}px`;
-      this.sideContainerEl.style.top = `${this.panelFloatingPos.y}px`;
-      this.sideContainerEl.style.right = 'auto';
+      this.sideContainerEl.classList.add('cad-floating-custom');
+      this.sideContainerEl.style.setProperty('--cad-float-x', `${this.panelFloatingPos.x}px`);
+      this.sideContainerEl.style.setProperty('--cad-float-y', `${this.panelFloatingPos.y}px`);
     } else {
-      this.sideContainerEl.style.left = '';
-      this.sideContainerEl.style.top = '';
-      this.sideContainerEl.style.right = '';
+      this.sideContainerEl.classList.remove('cad-floating-custom');
     }
   }
 
@@ -1653,11 +1647,9 @@ export class CadEditor {
         ? Math.max(8, Math.min(rh - ph - 8, belowTop))
         : Math.max(8, aboveTop);
     const left = Math.max(8, Math.min(rw - pw - 8, rect.left - rootRect.left));
-    pop.style.position = 'absolute';
-    pop.style.top = `${Math.round(top)}px`;
-    pop.style.left = `${Math.round(left)}px`;
-    pop.style.right = 'auto';
-    pop.style.bottom = 'auto';
+    pop.classList.add('cad-popover-placed');
+    pop.style.setProperty('--cad-pop-y', `${Math.round(top)}px`);
+    pop.style.setProperty('--cad-pop-x', `${Math.round(left)}px`);
   }
 
   openVirtualTitleBlockModal(): void {
@@ -3427,7 +3419,7 @@ export class CadEditor {
     } else if (
       this.dynamicInput &&
       this.activeBasePoint() &&
-      /^[0-9.\-]$/.test(e.key) &&
+      /^[0-9.-]$/.test(e.key) &&
       !e.ctrlKey &&
       !e.metaKey &&
       !e.altKey
@@ -3562,9 +3554,10 @@ export class CadEditor {
       PAN: 'PAN',
     };
     const alias = aliases[mappedCmd] ?? mappedCmd;
-    if (tools.some(([t]) => t === alias)) {
-      if (alias === 'SELECT') this.postDimEl.hidden = true;
-      this.setTool(alias as Tool);
+    const matchedTool = tools.find(([t]) => t === alias);
+    if (matchedTool) {
+      if (matchedTool[0] === 'SELECT') this.postDimEl.hidden = true;
+      this.setTool(matchedTool[0]);
       if (arg && Number.isFinite(Number(arg))) {
         if (alias === 'RO') this.rotation = Number(arg);
         else if (alias === 'SC' && Number(arg) > 0) this.scaleFactor = Number(arg);
@@ -6604,9 +6597,9 @@ export class CadEditor {
       top = Math.max(8, screenPt.y - popH - 14);
     }
     top = Math.max(8, Math.min(Math.max(8, stageH - popH - 8), top));
-    pop.style.left = `${Math.round(left)}px`;
-    pop.style.top = `${Math.round(top)}px`;
-    pop.style.bottom = 'auto';
+    pop.classList.add('cad-stage-placed');
+    pop.style.setProperty('--cad-stage-x', `${Math.round(left)}px`);
+    pop.style.setProperty('--cad-stage-y', `${Math.round(top)}px`);
   }
 
   private openBridgePopover(crossing: LineCrossing): void {
@@ -6928,7 +6921,7 @@ export class CadEditor {
             nIn.step = '1';
             nIn.value = String(curA.segments ?? 3);
             nIn.setAttribute('aria-label', 'Quick arrow subdivisions N');
-            nIn.style.width = '44px';
+            nIn.classList.add('cad-narrow-num-input');
             nIn.addEventListener('input', () => {
               const n = Math.round(Number(nIn.value));
               const t = liveEnt();

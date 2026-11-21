@@ -1,4 +1,4 @@
-# CAD-Lab 1.0.0 — Verification Report
+# CAD-Lab 1.0.1 — Verification Report
 
 Date: **21 November 2026**. Release artifacts build directly into `main.js`, `manifest.json`, and `styles.css` with zero external runtime dependencies.
 
@@ -10,7 +10,7 @@ Date: **21 November 2026**. Release artifacts build directly into `main.js`, `ma
 | Independent DXF / YAML / SVG audit | `ezdxf` 1.1.4 `doc.audit()` & `validate_exchange.py`: **0 errors, 0 fixes** (`AC1024` strict R2010 tables & system dictionaries verified) |
 | Community Plugin Store metadata | `manifest.json`, `versions.json`, `styles.css`, `README.md`, `CHANGELOG.md` verified |
 
-## Verified Capabilities in 1.0.0
+## Verified Capabilities in 1.0.1
 
 1. **International Standards Sub-trees**: Verified presence and hierarchical filtering of **ANSI/ISA-5.1**, **ISO 10628**, **ISO 14617** under `P&ID` and **IEC 60617**, **ANSI Y32**, **NFPA 79** under `Electrical multi-line` and `Electrical single-line` (231 total vector symbols).
 2. **Centralized Library Manager**: Verified creation of custom discipline symbols with custom metadata attributes (`RATING`, `MATERIAL`, `NOTES`), port generation, and safe deletion that protects placed instances.

@@ -1,5 +1,5 @@
 import { extendedLibrary, enrichCategories } from './catalog';
-import { Block, Entity, Point, Port } from './model';
+import { Block, Entity, Port } from './model';
 /** Editable schematic symbols inspired by ISA/IEC conventions; not a licensed standards catalogue. */
 export function builtinLibrary(): Block[] {
   const result: Block[] = [];

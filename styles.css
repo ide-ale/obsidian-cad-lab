@@ -1,9 +1,10 @@
+.workspace-leaf-content .view-content.cad-view-content,
 .cad-view-content {
-  padding: 0 !important;
-  display: flex !important;
+  padding: 0;
+  display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden !important;
+  overflow: hidden;
 }
 .cad-root {
   --cad-panel: var(--background-secondary, #20242a);
@@ -140,7 +141,6 @@
   gap: 4px;
   flex-wrap: nowrap;
   overflow-x: auto;
-  scrollbar-width: none;
   padding: 4px 6px;
   background: var(--cad-panel);
   border-bottom: 1px solid var(--cad-border);
@@ -291,7 +291,6 @@
   padding: 4px 6px;
   gap: 6px;
   border-right: none;
-  scrollbar-width: none;
 }
 .cad-root[data-ribbon-dock='top'] .cad-ribbon {
   grid-row: 1;
@@ -573,7 +572,7 @@
 }
 .cad-root[data-panel-dock='floating'] .cad-sidebar.cad-floating-collapsed {
   width: 228px;
-  height: auto !important;
+  height: auto;
   max-height: none;
 }
 .cad-root[data-panel-dock='floating'] .cad-sidebar.cad-floating-collapsed .cad-tabs,
@@ -1084,12 +1083,13 @@
   margin: 6px 0 0;
   font-size: 11px;
 }
+.workspace-leaf-content .view-content .cad-root.cad-fullscreen,
 .cad-root.cad-fullscreen {
-  position: fixed !important;
-  inset: 0 !important;
+  position: fixed;
+  inset: 0;
   z-index: 10000;
-  width: 100vw !important;
-  height: 100dvh !important;
+  width: 100vw;
+  height: 100dvh;
   max-height: none;
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
@@ -1147,7 +1147,6 @@
 .cad-tablet .cad-toolbar {
   flex-wrap: nowrap;
   overflow-x: auto;
-  scrollbar-width: none;
   gap: 4px;
   padding: 3px 6px;
 }
@@ -1169,7 +1168,6 @@
 .cad-tablet .cad-precision {
   flex-wrap: nowrap;
   overflow-x: auto;
-  scrollbar-width: none;
   gap: 3px;
   margin: 2px 0;
 }
@@ -1700,14 +1698,37 @@
   font-size: 10.5px;
   color: var(--cad-muted);
 }
-.cad-tool-options[hidden],
-.cad-post-dim-tab[hidden],
-.cad-bridge-popover[hidden],
-.cad-floating-popover[hidden],
-.cad-dropdown-menu[hidden],
-.cad-ltype-popover[hidden],
-.cad-hud[hidden] {
-  display: none !important;
+.cad-root .cad-tool-options[hidden],
+.cad-root .cad-post-dim-tab[hidden],
+.cad-root .cad-bridge-popover[hidden],
+.cad-root .cad-floating-popover[hidden],
+.cad-root .cad-dropdown-menu[hidden],
+.cad-root .cad-ltype-popover[hidden],
+.cad-root .cad-hud[hidden] {
+  display: none;
+}
+.cad-hidden-file-input {
+  display: none;
+}
+.cad-root .cad-narrow-num-input {
+  width: 44px;
+}
+.cad-root[data-panel-dock='floating'] .cad-sidebar.cad-floating-custom {
+  left: var(--cad-float-x);
+  top: var(--cad-float-y);
+  right: auto;
+}
+.cad-floating-popover.cad-popover-placed {
+  position: absolute;
+  top: var(--cad-pop-y, 0px);
+  left: var(--cad-pop-x, 0px);
+  right: auto;
+  bottom: auto;
+}
+.cad-root .cad-stage-placed {
+  left: var(--cad-stage-x, 8px);
+  top: var(--cad-stage-y, 8px);
+  bottom: auto;
 }
 .cad-floating-popover {
   z-index: 60;
@@ -1735,7 +1756,6 @@
   background: var(--cad-surface-alt, var(--cad-surface));
   border-top: 1px solid var(--cad-border);
   overflow-x: auto;
-  scrollbar-width: none;
   flex-shrink: 0;
 }
 .cad-page-bar::-webkit-scrollbar {
