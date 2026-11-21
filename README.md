@@ -1,6 +1,6 @@
 # CAD-Lab
 
-CAD-Lab **0.4.0** is a portable vector CAD plugin for Obsidian dedicated to P&ID (Process and Instrumentation Diagrams) and electrical single-line and multi-line schematics. All geometry is stored in real millimeters (`mm`) inside `.cad.md` Markdown notes, accompanied by an automatically synchronized unidirectional **Bill of Materials (BOM)** table, DXF/DWG interchange, and native true-scale **Vector PDF** export.
+CAD-Lab **1.0.0** is a portable vector CAD plugin for Obsidian dedicated to P&ID (Process and Instrumentation Diagrams) and electrical single-line and multi-line schematics. All geometry is stored in real millimeters (`mm`) inside `.cad.md` Markdown notes, accompanied by an automatically synchronized unidirectional **Bill of Materials (BOM)** table, DXF/DWG interchange, and native true-scale **Vector PDF** export.
 
 The plugin runtime uses only Obsidian and standard Web APIs—zero Node built-ins or Electron dependencies—so the identical bundle runs on both desktop and mobile (iPadOS / Apple Pencil).
 
@@ -17,7 +17,7 @@ Run **CAD-Lab: Create new CAD / P&ID drawing** (or **Create new CAD / P&ID drawi
 Check the document bar:
 
 - **CAD · EDITABLE**: All drawing, dimensioning, symbol library, sheet setup, and modification tools are active.
-- **DXF · READ ONLY**: The source `.dxf` / `.dwg` file is being viewed safely. Click **Open editable drawing** in the banner to open or create its editable `.cad.md` companion note.
+- **DXF · READ ONLY**: The source `.dxf` / `.dwg` file is being viewed safely. Click **Edit DXF directly** to edit ASCII `.dxf` files in place (without creating duplicate files), or **Convert to .cad.md…** to convert cleanly (with the option to move the source `.dxf` to Trash) and enable YAML properties, BOM tables, and multi-page sheets.
 
 ## Workspace, Tablet / Apple Pencil & Precision Grid
 
@@ -92,6 +92,6 @@ Every `.cad.md` note is structured like Excalidraw with three sections:
 
 ## Credits
 
-Written and maintained by **Alessandro Abrami (ide-ale)** ([github.com/ide-ale](https://github.com/ide-ale)).
+Written and maintained by **Alessandro Abrami (ide-ale)** ([github.com/ide-ale/obsidian-cad-lab](https://github.com/ide-ale/obsidian-cad-lab)).
 
 Design goals: zero runtime dependencies outside Obsidian and Web APIs, deterministic millimeter geometry, small bundle footprint, and transparent file formats. Released under the [MIT License](LICENSE).

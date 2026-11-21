@@ -620,7 +620,13 @@ try {
       (await page.evaluate(() => JSON.stringify(window.cad.drawing))) === before,
       'Viewer modified DXF',
     );
-    await page.getByRole('button', { name: 'Open editable drawing', exact: true }).click();
+    await page.getByRole('button', { name: 'Edit DXF directly', exact: true }).click();
+    assert(
+      (await page.locator('.cad-mode-badge').innerText()) === 'CAD · EDITABLE',
+      'Direct DXF edit did not enter editing mode',
+    );
+    await page.evaluate(() => window.cadReadOnly());
+    await page.getByRole('button', { name: 'Convert to .cad.md…', exact: true }).click();
     assert(
       (await page.locator('.cad-mode-badge').innerText()) === 'CAD · EDITABLE',
       'Conversion did not enter editing mode',
@@ -1815,7 +1821,7 @@ try {
     },
   );
   await check(
-    'v0.4.0 UI Polish: Align H/V, Unified Linetype, Collapsed Layers + Merge, Scroll Keep, Label Grip, Dynamic Connectors & Virtual/Inspector BOM',
+    'v1.0.0 UI Polish: Align H/V, Unified Linetype, Collapsed Layers + Merge, Scroll Keep, Label Grip, Dynamic Connectors & Virtual/Inspector BOM',
     async () => {
       await page.setViewportSize({ width: 1280, height: 900 });
       await page.evaluate(() => window.cadEditable());
@@ -2136,6 +2142,55 @@ try {
       );
     },
   );
+  await check(
+    'Non-fullscreen offset & CSS-transformed pane keeps Export dropdown aligned to button',
+    async () => {
+      await reset(false);
+      await page.evaluate(() => {
+        const app = document.getElementById('app');
+        app.style.marginTop = '56px';
+        app.style.marginLeft = '210px';
+        app.style.width = '920px';
+        app.style.height = '540px';
+        app.style.transform = 'translateZ(0)';
+      });
+      const expBtn = page.getByRole('button', { name: 'Import & Export', exact: true });
+      await expBtn.click();
+      const boxCheck = await page.evaluate(() => {
+        const rootEl = document.querySelector('.cad-root');
+        const btn = document.querySelector('button[aria-label="Import & Export"]');
+        const menu = document.querySelector('.cad-dropdown-menu');
+        if (!rootEl || !btn || !menu) return { ok: false, reason: 'missing elements' };
+        const r = rootEl.getBoundingClientRect();
+        const b = btn.getBoundingClientRect();
+        const m = menu.getBoundingClientRect();
+        return {
+          ok:
+            !menu.hasAttribute('hidden') &&
+            m.width > 100 &&
+            m.height > 80 &&
+            m.top >= b.bottom - 2 &&
+            m.top <= b.bottom + 24 &&
+            Math.abs(m.left - b.left) <= 24 &&
+            m.right <= r.right + 2 &&
+            m.bottom <= r.bottom + 2,
+          r,
+          b,
+          m,
+        };
+      });
+      await page.evaluate(() => {
+        const app = document.getElementById('app');
+        app.removeAttribute('style');
+      });
+      assert(
+        boxCheck.ok,
+        'Export dropdown misaligned in non-fullscreen transformed pane: ' +
+          JSON.stringify(boxCheck),
+      );
+    },
+  );
+
   await check('Disposal cancels rendering and removes listeners/root', async () => {
     await page.evaluate(() => {
       window.cad.toggleFullscreen(true);

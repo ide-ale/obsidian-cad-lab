@@ -1,16 +1,16 @@
-# CAD-Lab 0.4.0 — Verification Report
+# CAD-Lab 1.0.0 — Verification Report
 
-Date: **16 November 2026**. Release artifacts build directly into `main.js`, `manifest.json`, and `styles.css` with zero external runtime dependencies.
+Date: **21 November 2026**. Release artifacts build directly into `main.js`, `manifest.json`, and `styles.css` with zero external runtime dependencies.
 
 | Check | Result |
 | --- | --- |
 | TypeScript strict + esbuild browser bundle | Pass; `main.js` generated with zero external runtime dependencies (`obsidian` only) |
 | Core geometry, standards (ISA-5.1, BS 1646, DIN 28004, IEC 62271-1/200), Library Manager, labelStyle, BOM TAG copy increment, Group/Ungroup, linePattern & Arrows, Match Prop, Scale, Offset Inside/Outside/Both, Bindings, Multi-Page, Clean YAML, Search & Print Fit PDF | **57/57 passed** (`tests/run.ts`) |
-| Browser UI, Move/Copy pointer UX, Group/Ungroup, Visual Linetype spacing & Arrows, Tablet Export popovers, Single-row Desktop toolbar, High-contrast inputs, Bridge Jumps (`J`), 1mm grid status editor, iPad 1-finger pan / 2-finger pinch+pan, Post-Draw Tab, MA/SC/Offset modes, Shortcuts/Mouse, Multi-Page, Print Fit & Find Layer Highlight | **35/35 passed** (`tests/browser-tests.mjs`) |
+| Browser UI, Move/Copy pointer UX, Group/Ungroup, Visual Linetype spacing & Arrows, Tablet Export popovers, Single-row Desktop toolbar, High-contrast inputs, Bridge Jumps (`J`), 1mm grid status editor, iPad 1-finger pan / 2-finger pinch+pan, Post-Draw Tab, MA/SC/Offset modes, Shortcuts/Mouse, Multi-Page, Print Fit & Find Layer Highlight | **36/36 passed** (`tests/browser-tests.mjs`) |
 | Independent DXF / YAML / SVG audit | `ezdxf` 1.1.4 `doc.audit()` & `validate_exchange.py`: **0 errors, 0 fixes** (`AC1024` strict R2010 tables & system dictionaries verified) |
 | Community Plugin Store metadata | `manifest.json`, `versions.json`, `styles.css`, `README.md`, `CHANGELOG.md` verified |
 
-## Verified Capabilities in 0.4.0
+## Verified Capabilities in 1.0.0
 
 1. **International Standards Sub-trees**: Verified presence and hierarchical filtering of **ANSI/ISA-5.1**, **ISO 10628**, **ISO 14617** under `P&ID` and **IEC 60617**, **ANSI Y32**, **NFPA 79** under `Electrical multi-line` and `Electrical single-line` (182 total vector symbols).
 2. **Centralized Library Manager**: Verified creation of custom discipline symbols with custom metadata attributes (`RATING`, `MATERIAL`, `NOTES`), port generation, and safe deletion that protects placed instances.

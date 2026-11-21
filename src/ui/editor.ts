@@ -214,6 +214,7 @@ export interface EditorHost {
   importLibrary(): Promise<Drawing | undefined>;
   saveLibrary(d: Drawing): Promise<void>;
   convert?(d: Drawing): Promise<void>;
+  editDxfInPlace?(d: Drawing): Promise<void>;
   settingsChanged?(settings: EditorSettings): void;
   insertPresetYaml?(d: Drawing): void;
   saveFrontmatter?(nextFrontmatter: Record<string, unknown>, d: Drawing): void;
@@ -553,10 +554,15 @@ export class CadEditor {
         banner,
         'span',
         '',
-        'This DXF is read-only. Open the editable CAD drawing to add or modify geometry.',
+        'This DXF is read-only. Edit the DXF directly in place or convert it to a .cad.md note (adds BOM, YAML & multi-page).',
       );
+      const actions = element(banner, 'div', 'cad-readonly-actions');
+      if (host.editDxfInPlace)
+        button(actions, 'Edit DXF directly', () =>
+          this.run(() => host.editDxfInPlace!(this.drawing)),
+        );
       if (host.convert)
-        button(banner, 'Open editable drawing', () => this.run(() => host.convert!(this.drawing)));
+        button(actions, 'Convert to .cad.md…', () => this.run(() => host.convert!(this.drawing)));
     }
 
     // Grouped Import / Export dropdown menu (mounted via fixed positioning so scrollable toolbars never clip it)
@@ -570,8 +576,8 @@ export class CadEditor {
         const willOpen = exportMenu.hidden;
         this.closeFloatingPopovers();
         if (willOpen) {
-          this.placeFloatingPopover(exportBtn, exportMenu);
           exportMenu.hidden = false;
+          this.placeFloatingPopover(exportBtn, exportMenu);
         }
       },
       'Import & Export',
@@ -1526,14 +1532,26 @@ export class CadEditor {
   }
 
   private placeFloatingPopover(trigger: HTMLElement, pop: HTMLElement): void {
-    const win = trigger.ownerDocument.defaultView;
+    const wasHidden = pop.hidden;
+    if (wasHidden) pop.hidden = false;
+    const rootRect = this.root.getBoundingClientRect();
     const rect = trigger.getBoundingClientRect();
-    const vw = win?.innerWidth ?? 1200;
-    const vh = win?.innerHeight ?? 800;
-    pop.style.position = 'fixed';
-    pop.style.top = `${Math.min(vh - 220, rect.bottom + 4)}px`;
-    pop.style.left = `${Math.max(8, Math.min(vw - 310, rect.left))}px`;
+    const rw = rootRect.width || this.root.clientWidth || 1200;
+    const rh = rootRect.height || this.root.clientHeight || 800;
+    const pw = pop.offsetWidth || 240;
+    const ph = pop.offsetHeight || 220;
+    const belowTop = rect.bottom - rootRect.top + 4;
+    const aboveTop = rect.top - rootRect.top - ph - 4;
+    const top =
+      belowTop + ph <= rh - 8 || aboveTop < 8
+        ? Math.max(8, Math.min(rh - ph - 8, belowTop))
+        : Math.max(8, aboveTop);
+    const left = Math.max(8, Math.min(rw - pw - 8, rect.left - rootRect.left));
+    pop.style.position = 'absolute';
+    pop.style.top = `${Math.round(top)}px`;
+    pop.style.left = `${Math.round(left)}px`;
     pop.style.right = 'auto';
+    pop.style.bottom = 'auto';
   }
 
   openVirtualTitleBlockModal(): void {

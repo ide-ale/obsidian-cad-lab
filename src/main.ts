@@ -49,7 +49,7 @@ import { decodeDwgOrDxfText, inspectDwgBinary } from './io/dwg';
 import { readMarkdown, writeMarkdown } from './io/markdown';
 import { PdfExporter } from './io/pdf';
 import { Theme, toSvg } from './render/renderer';
-import { CadEditor, EditorSettings, button, element } from './ui/editor';
+import { CadEditor, EditorHost, EditorSettings, button, element } from './ui/editor';
 export const CAD_VIEW = 'cad-lab-view',
   DXF_VIEW = 'cad-lab-dxf-viewer';
 const yaml = { parse: parseYaml, stringify: (v: unknown) => stringifyYaml(v) };
@@ -518,12 +518,17 @@ export class CadView extends TextFileView {
   editor?: CadEditor;
   private source = '';
   private invalid = false;
+  private dxfEditable = false;
+  private dxfWarnings: string[] = [];
   constructor(
     leaf: WorkspaceLeaf,
     private plugin: CadPlugin,
     readonly readOnly = false,
   ) {
     super(leaf);
+  }
+  get isEditableMode(): boolean {
+    return !this.readOnly || this.dxfEditable;
   }
   getViewType(): string {
     return this.readOnly ? DXF_VIEW : CAD_VIEW;
@@ -546,14 +551,166 @@ export class CadView extends TextFileView {
     this.addAction('maximize', 'CAD full screen', () => this.editor?.toggleFullscreen());
   }
   getViewData(): string {
-    return this.readOnly || this.invalid || !this.editor
-      ? this.source
-      : writeMarkdown(this.editor.drawing, this.source, yaml);
+    if (this.invalid || !this.editor) return this.source;
+    if (!this.readOnly) return writeMarkdown(this.editor.drawing, this.source, yaml);
+    if (this.dxfEditable) return new DxfExporter().export(this.editor.drawing);
+    return this.source;
+  }
+  private buildEditorHost(
+    frontmatter?: Record<string, unknown>,
+    allowDirectDxf = false,
+  ): EditorHost {
+    return {
+      documentName: this.file?.name,
+      frontmatter,
+      newDrawing: () => this.plugin.createDrawing(),
+      save: () => this.save(),
+      changed: () => {
+        if (this.isEditableMode) this.requestSave();
+      },
+      notice: (text) => new Notice(text),
+      exportDxf: (d) => this.plugin.exportDxf(d, this.file),
+      exportSvg: (svg) => this.plugin.exportSvg(svg, this.file),
+      exportPdf: (bytes) => this.plugin.exportPdf(bytes, this.file),
+      importLibrary: () => this.plugin.pickExternalLibrary(),
+      saveLibrary: (d) => this.plugin.saveLibrary(d),
+      editDxfInPlace:
+        allowDirectDxf && this.readOnly && !this.dxfEditable
+          ? (d) => this.enableDirectDxfEdit(d)
+          : undefined,
+      convert: (d) => this.plugin.convert(d, this.file, this.leaf),
+      insertPresetYaml: (d) => {
+        if (this.readOnly) {
+          new Notice('Markdown YAML properties require a .cad.md note. Use Convert to .cad.md.');
+          return;
+        }
+        this.source = writeMarkdown(d, this.source, yaml, { includePresetProperties: true });
+        this.editor?.setFrontmatter(readMarkdown(this.source, yaml).frontmatter);
+        this.requestSave();
+      },
+      saveFrontmatter: (nextFm, d) => {
+        if (this.readOnly) {
+          new Notice('Markdown YAML properties require a .cad.md note. Use Convert to .cad.md.');
+          return;
+        }
+        this.source = writeMarkdown(d, this.source, yaml, { frontmatterOverride: nextFm });
+        this.editor?.setFrontmatter(readMarkdown(this.source, yaml).frontmatter);
+        this.requestSave();
+      },
+      settingsChanged: (s) => {
+        const { tablet, ...rest } = s;
+        const updated: Partial<Settings> = { ...rest };
+        if (typeof tablet === 'boolean') {
+          if (isTouchTabletDevice()) updated.mobileTablet = tablet;
+          else updated.tablet = tablet;
+        }
+        this.plugin.settings = { ...this.plugin.settings, ...updated };
+        void this.plugin.saveData(this.plugin.settings);
+      },
+    };
+  }
+  private editorSettings(): EditorSettings {
+    return {
+      ...this.plugin.settings,
+      theme: this.plugin.settings.theme,
+      penOnly: this.plugin.settings.penOnly ?? true,
+      tablet: isTouchTabletDevice()
+        ? (this.plugin.settings.mobileTablet ?? true)
+        : (this.plugin.settings.tablet ?? false),
+    };
+  }
+  private mountEditor(
+    drawing: Drawing,
+    warnings: string[],
+    frontmatter?: Record<string, unknown>,
+    allowDirectDxf = false,
+  ): void {
+    this.editor?.dispose();
+    this.contentEl.replaceChildren();
+    this.editor = new CadEditor(
+      this.contentEl,
+      drawing,
+      this.buildEditorHost(frontmatter, allowDirectDxf),
+      !this.isEditableMode,
+      this.editorSettings(),
+    );
+    if (warnings.length) {
+      const note = element(this.contentEl, 'div', 'cad-import-warnings', warnings.join('\n'));
+      note.setAttribute('role', 'status');
+    }
+  }
+  async enableDirectDxfEdit(drawing: Drawing): Promise<void> {
+    if (!this.file || this.file.extension.toLowerCase() !== 'dxf') return;
+    const activate = (): void => {
+      this.dxfEditable = true;
+      const prepared = supplementLibrary(drawing, this.plugin.allCatalogBlocks());
+      this.mountEditor(prepared, this.dxfWarnings, undefined, false);
+      new Notice(
+        `Direct DXF editing enabled on ${this.file?.name}. Changes save in DXF R2010 format (single sheet, no Markdown BOM).`,
+        6500,
+      );
+    };
+    if (!this.dxfWarnings.length) {
+      activate();
+      return;
+    }
+    const confirmed = await new Promise<string>((resolve) => {
+      let settled = false;
+      const done = (choice: string): void => {
+        if (settled) return;
+        settled = true;
+        resolve(choice);
+      };
+      const modal = new (class extends Modal {
+        onOpen(): void {
+          const { contentEl } = this;
+          contentEl.empty();
+          element(contentEl, 'h3', '', 'Direct DXF editing warning');
+          element(
+            contentEl,
+            'p',
+            'cad-help',
+            'This DXF contained unsupported entities on import. Saving directly over the original .dxf writes CAD-Lab DXF R2010 geometry and will drop unsupported entities.',
+          );
+          element(contentEl, 'pre', 'cad-import-warnings', this.warnings.join('\n'));
+          const actions = element(contentEl, 'div', 'cad-actions');
+          button(actions, 'Edit DXF directly (overwrite)', () => {
+            done('direct');
+            this.close();
+          });
+          const conv = button(actions, 'Convert to .cad.md…', () => {
+            done('convert');
+            this.close();
+          });
+          conv.classList.add('mod-cta');
+          button(actions, 'Cancel', () => {
+            done('cancel');
+            this.close();
+          });
+        }
+        onClose(): void {
+          done('cancel');
+        }
+        constructor(
+          app: App,
+          private warnings: string[],
+        ) {
+          super(app);
+        }
+      })(this.app, this.dxfWarnings);
+      modal.open();
+    });
+    if (confirmed === 'direct') activate();
+    else if (confirmed === 'convert') await this.plugin.convert(drawing, this.file, this.leaf);
   }
   setViewData(data: string, clear: boolean): void {
     if (!clear && this.editor && data === this.getViewData()) {
       this.source = data;
       return;
+    }
+    if (clear) {
+      this.dxfEditable = false;
+      this.dxfWarnings = [];
     }
     this.source = data;
     this.data = data;
@@ -569,8 +726,11 @@ export class CadView extends TextFileView {
           return;
         }
         const result = new DxfImporter().import(data);
-        drawing = result.drawing;
+        drawing = this.dxfEditable
+          ? supplementLibrary(result.drawing, this.plugin.allCatalogBlocks())
+          : result.drawing;
         warnings = result.warnings;
+        this.dxfWarnings = warnings;
       } else {
         const parsed = readMarkdown(data, yaml);
         frontmatter = parsed.frontmatter;
@@ -581,63 +741,14 @@ export class CadView extends TextFileView {
         this.editor.setFrontmatter(frontmatter);
         this.editor.load(drawing);
       } else {
-        this.editor?.dispose();
-        this.contentEl.replaceChildren();
-        this.editor = new CadEditor(
-          this.contentEl,
+        this.mountEditor(
           drawing,
-          {
-            documentName: this.file?.name,
-            frontmatter,
-            newDrawing: () => this.plugin.createDrawing(),
-            save: () => this.save(),
-            changed: () => {
-              if (!this.readOnly) this.requestSave();
-            },
-            notice: (text) => new Notice(text),
-            exportDxf: (d) => this.plugin.exportDxf(d, this.file),
-            exportSvg: (svg) => this.plugin.exportSvg(svg, this.file),
-            exportPdf: (bytes) => this.plugin.exportPdf(bytes, this.file),
-            importLibrary: () => this.plugin.pickExternalLibrary(),
-            saveLibrary: (d) => this.plugin.saveLibrary(d),
-            convert: (d) => this.plugin.convert(d, this.file),
-            insertPresetYaml: (d) => {
-              if (this.readOnly) return;
-              this.source = writeMarkdown(d, this.source, yaml, { includePresetProperties: true });
-              this.editor?.setFrontmatter(readMarkdown(this.source, yaml).frontmatter);
-              this.requestSave();
-            },
-            saveFrontmatter: (nextFm, d) => {
-              if (this.readOnly) return;
-              this.source = writeMarkdown(d, this.source, yaml, { frontmatterOverride: nextFm });
-              this.editor?.setFrontmatter(readMarkdown(this.source, yaml).frontmatter);
-              this.requestSave();
-            },
-            settingsChanged: (s) => {
-              const { tablet, ...rest } = s;
-              const updated: Partial<Settings> = { ...rest };
-              if (typeof tablet === 'boolean') {
-                if (isTouchTabletDevice()) updated.mobileTablet = tablet;
-                else updated.tablet = tablet;
-              }
-              this.plugin.settings = { ...this.plugin.settings, ...updated };
-              void this.plugin.saveData(this.plugin.settings);
-            },
-          },
-          this.readOnly,
-          {
-            ...this.plugin.settings,
-            theme: this.plugin.settings.theme,
-            penOnly: this.plugin.settings.penOnly ?? true,
-            tablet: isTouchTabletDevice()
-              ? (this.plugin.settings.mobileTablet ?? true)
-              : (this.plugin.settings.tablet ?? false),
-          },
+          warnings,
+          frontmatter,
+          this.readOnly && this.file?.extension.toLowerCase() === 'dxf',
         );
       }
       if (warnings.length) {
-        const note = element(this.contentEl, 'div', 'cad-import-warnings', warnings.join('\n'));
-        note.setAttribute('role', 'status');
         new Notice(
           `DXF imported with ${warnings.length} warnings. Review the details below the drawing.`,
           8000,
@@ -663,45 +774,8 @@ export class CadView extends TextFileView {
       const decoded = decodeDwgOrDxfText(bytes);
       if (decoded.text !== undefined) {
         const result = new DxfImporter().import(decoded.text);
-        this.editor?.dispose();
-        this.contentEl.replaceChildren();
-        this.editor = new CadEditor(
-          this.contentEl,
-          result.drawing,
-          {
-            documentName: this.file?.name,
-            newDrawing: () => this.plugin.createDrawing(),
-            changed: () => {},
-            notice: (text) => new Notice(text),
-            exportDxf: (d) => this.plugin.exportDxf(d, this.file),
-            exportSvg: (svg) => this.plugin.exportSvg(svg, this.file),
-            exportPdf: (pdfBytes) => this.plugin.exportPdf(pdfBytes, this.file),
-            importLibrary: () => this.plugin.pickExternalLibrary(),
-            saveLibrary: (d) => this.plugin.saveLibrary(d),
-            convert: (d) => this.plugin.convert(d, this.file),
-            insertPresetYaml: (d) => {
-              if (this.readOnly) return;
-              this.source = writeMarkdown(d, this.source, yaml, { includePresetProperties: true });
-              this.editor?.setFrontmatter(readMarkdown(this.source, yaml).frontmatter);
-              this.requestSave();
-            },
-            saveFrontmatter: (nextFm, d) => {
-              if (this.readOnly) return;
-              this.source = writeMarkdown(d, this.source, yaml, { frontmatterOverride: nextFm });
-              this.editor?.setFrontmatter(readMarkdown(this.source, yaml).frontmatter);
-              this.requestSave();
-            },
-          },
-          true,
-          {
-            ...this.plugin.settings,
-            theme: this.plugin.settings.theme,
-            penOnly: this.plugin.settings.penOnly ?? true,
-            tablet: isTouchTabletDevice()
-              ? (this.plugin.settings.mobileTablet ?? true)
-              : (this.plugin.settings.tablet ?? false),
-          },
-        );
+        this.dxfWarnings = result.warnings;
+        this.mountEditor(result.drawing, result.warnings, undefined, false);
         return;
       }
       const info = decoded.dwg ?? inspectDwgBinary(bytes);
@@ -740,7 +814,7 @@ export class CadView extends TextFileView {
     }
   }
   async save(clear?: boolean): Promise<void> {
-    if (this.readOnly || this.invalid) return;
+    if (!this.isEditableMode || this.invalid) return;
     await super.save(clear);
   }
   clear(): void {
@@ -748,6 +822,8 @@ export class CadView extends TextFileView {
     this.editor = undefined;
     this.source = '';
     this.invalid = false;
+    this.dxfEditable = false;
+    this.dxfWarnings = [];
   }
   async onClose(): Promise<void> {
     if (this.editor) await this.save();
@@ -893,7 +969,7 @@ export default class CadPlugin extends Plugin {
       name: 'Open centralized library manager',
       checkCallback: (checking) => {
         const view = this.app.workspace.getActiveViewOfType(CadView);
-        if (!view?.editor || view.readOnly) return false;
+        if (!view?.editor || !view.isEditableMode) return false;
         if (!checking) view.editor.openLibraryManager();
         return true;
       },
@@ -938,8 +1014,8 @@ export default class CadPlugin extends Plugin {
       name: 'Edit current DXF as CAD',
       checkCallback: (checking) => {
         const view = this.app.workspace.getActiveViewOfType(CadView);
-        if (!view?.readOnly || !view.editor) return false;
-        if (!checking) void this.convert(view.editor.drawing, view.file);
+        if (!view || view.isEditableMode || !view.editor) return false;
+        if (!checking) void this.convert(view.editor.drawing, view.file, view.leaf);
         return true;
       },
     });
@@ -1010,7 +1086,7 @@ export default class CadPlugin extends Plugin {
           const result = new DxfImporter().import(decoded.text);
           if (result.warnings.length) new Notice(result.warnings.join('\n'), 12000);
           const view = this.app.workspace.getActiveViewOfType(CadView);
-          if (view?.editor && !view.readOnly)
+          if (view?.editor && view.isEditableMode)
             view.editor.stack.execute('Import DXF library', (d) => {
               mergeLibrary(d, result.drawing);
             });
@@ -1316,24 +1392,106 @@ export default class CadPlugin extends Plugin {
     const defaultPath = `${this.folder(file)}${file?.basename.replace(/\.cad$/i, '') ?? 'Drawing'}.pdf`;
     await this.saveExportFile(defaultPath, 'application/pdf', bytes, 'Vector PDF', 'pdf');
   }
-  async convert(d: Drawing, file: TFile | null): Promise<void> {
+  async convert(d: Drawing, file: TFile | null, leaf?: WorkspaceLeaf): Promise<void> {
     const counterpart = normalizePath(`${this.folder(file)}${file?.basename ?? 'Drawing'}.cad.md`);
     const existing = this.app.vault.getAbstractFileByPath(counterpart);
+    let existingValid = false;
     if (existing instanceof TFile) {
       try {
-        readMarkdown(await this.app.vault.read(existing));
-        await this.openCad(existing);
-        return;
-      } catch (error) {
-        new Notice(
-          `The existing CAD file could not be opened: ${message(error)}. A separate copy will be created.`,
-        );
+        readMarkdown(await this.app.vault.read(existing), yaml);
+        existingValid = true;
+      } catch {
+        existingValid = false;
       }
     }
 
-    const path = await this.uniquePath(`${this.folder(file)}${file?.basename ?? 'Drawing'}.cad.md`),
-      created = await this.app.vault.create(path, writeMarkdown(d, '', yaml));
-    await this.openCad(created);
+    type ConvertChoice =
+      'trash-dxf' | 'open-existing-trash' | 'open-existing' | 'keep-dxf' | 'cancel';
+    const choice: ConvertChoice = file
+      ? await new Promise<ConvertChoice>((resolve) => {
+          let settled = false;
+          const done = (c: ConvertChoice): void => {
+            if (settled) return;
+            settled = true;
+            resolve(c);
+          };
+          const modal = new (class extends Modal {
+            onOpen(): void {
+              const { contentEl } = this;
+              contentEl.empty();
+              element(contentEl, 'h3', '', 'Convert DXF to CAD Markdown (.cad.md)');
+              element(
+                contentEl,
+                'p',
+                'cad-help',
+                existing instanceof TFile
+                  ? `A companion note (${counterpart}) already exists. Choose how to proceed without leaving duplicate files.`
+                  : `Create ${counterpart} to unlock YAML properties, automatic BOM tables, and multi-page sheets.`,
+              );
+              const actions = element(contentEl, 'div', 'cad-actions');
+              if (existing instanceof TFile && existingValid) {
+                const openTrash = button(actions, 'Open existing & move DXF to Trash', () => {
+                  done('open-existing-trash');
+                  this.close();
+                });
+                openTrash.classList.add('mod-cta');
+                button(actions, 'Open existing (keep DXF)', () => {
+                  done('open-existing');
+                  this.close();
+                });
+                button(actions, 'Overwrite .cad.md & move DXF to Trash', () => {
+                  done('trash-dxf');
+                  this.close();
+                });
+              } else {
+                const primary = button(actions, 'Convert & move DXF to Trash', () => {
+                  done('trash-dxf');
+                  this.close();
+                });
+                primary.classList.add('mod-cta');
+                button(actions, 'Convert & keep original DXF', () => {
+                  done('keep-dxf');
+                  this.close();
+                });
+              }
+              button(actions, 'Cancel', () => {
+                done('cancel');
+                this.close();
+              });
+            }
+            onClose(): void {
+              done('cancel');
+            }
+          })(this.app);
+          modal.open();
+        })
+      : existingValid
+        ? 'open-existing'
+        : 'keep-dxf';
+
+    if (choice === 'cancel') return;
+
+    const targetLeaf = leaf ?? this.app.workspace.getLeaf(false);
+    if (
+      (choice === 'open-existing' || choice === 'open-existing-trash') &&
+      existing instanceof TFile
+    ) {
+      if (choice === 'open-existing-trash' && file) await this.app.fileManager.trashFile(file);
+      await this.openCad(existing, targetLeaf);
+      return;
+    }
+
+    const mdContent = writeMarkdown(supplementLibrary(d, this.allCatalogBlocks()), '', yaml);
+    let targetFile: TFile;
+    if (choice === 'trash-dxf' && existing instanceof TFile) {
+      await this.app.vault.modify(existing, mdContent);
+      targetFile = existing;
+    } else {
+      const path = existing instanceof TFile ? await this.uniquePath(counterpart) : counterpart;
+      targetFile = await this.app.vault.create(path, mdContent);
+    }
+    if (choice === 'trash-dxf' && file) await this.app.fileManager.trashFile(file);
+    await this.openCad(targetFile, targetLeaf);
   }
   async pickExternalLibrary(): Promise<Drawing | undefined> {
     const input = document.createElement('input');
