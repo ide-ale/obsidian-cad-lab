@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Portable vector CAD for Obsidian, P&ID and electrical schematics",
-  "author": "Alessandro Abrami (ide-ale)",
+  "author": "Alessandro Abrami",
   "homepage": "https://github.com/ide-ale",
   "repository": {
     "type": "git",

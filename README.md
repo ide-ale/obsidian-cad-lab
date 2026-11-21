@@ -92,6 +92,6 @@ Every `.cad.md` note is structured like Excalidraw with three sections:
 
 ## Credits
 
-Written and maintained by **Alessandro Abrami (ide-ale)** ([github.com/ide-ale/obsidian-cad-lab](https://github.com/ide-ale/obsidian-cad-lab)).
+Written and maintained by **Alessandro Abrami** ([github.com/ide-ale/obsidian-cad-lab](https://github.com/ide-ale/obsidian-cad-lab)).
 
 Design goals: zero runtime dependencies outside Obsidian and Web APIs, deterministic millimeter geometry, small bundle footprint, and transparent file formats. Released under the [MIT License](LICENSE).
