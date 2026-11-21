@@ -1,7 +1,7 @@
 /*
  * CAD-Lab — Portable millimeter vector CAD for Obsidian.
  * Copyright (c) 2026 Alessandro Abrami <https://github.com/ide-ale>
- * Licensed under the MIT License. See LICENSE file for details.
+ * Licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). See LICENSE file for details.
  */
 import {
   App,

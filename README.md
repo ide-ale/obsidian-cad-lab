@@ -1,7 +1,7 @@
 # CAD-Lab
 
 [![GitHub release](https://img.shields.io/github/v/release/ide-ale/obsidian-cad-lab)](https://github.com/ide-ale/obsidian-cad-lab/releases/latest)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPLv3-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Obsidian-Desktop%20%26%20Mobile%20(iPadOS)-7c3aed)](https://obsidian.md)
 [![ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Development-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/alessandroabrami)
 
@@ -113,4 +113,4 @@ If you find **CAD-Lab** useful for your engineering schematics, P&ID documentati
 
 Written and maintained by **Alessandro Abrami** ([github.com/ide-ale/obsidian-cad-lab](https://github.com/ide-ale/obsidian-cad-lab)).
 
-Released under the [MIT License](LICENSE).
+Released under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE).
